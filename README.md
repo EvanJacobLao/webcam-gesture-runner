@@ -1,25 +1,51 @@
 # Webcam Gesture Runner
 
-A Windows webcam controller for a 3D endless runner. Lean left or right, jump, and crouch to send keyboard actions to Road Surfers.
+Play a 3D endless runner using webcam gestures: lean to change lanes, jump to jump, and crouch to slide.
 
-This is Evan Jacob Lao's learning project using Python, OpenCV, and MediaPipe Pose Landmarker. MediaPipe supplies pretrained body landmarks; rule-based geometry, standing calibration, and armed flags translate them into one-shot actions. No custom model training is required.
+A computer vision learning project by **Evan Jacob Lao**. A Python controller combines pretrained body landmarks with rule-based gesture detection and sends keyboard input to the existing Road Surfers browser game.
 
-The underlying game is [Road Surfers by durga811](https://github.com/durga811/road-surfers). Its original history and documentation are retained below. The Python motion controller is in `src/motion_control/camera.py`.
+## Game and model references
 
-## Run locally (Windows / PowerShell)
+- **Game:** [Road Surfers by durga811](https://github.com/durga811/road-surfers), built with Vite, TypeScript, and Three.js. Its source and commit history are preserved. See the [original game documentation](docs/ROAD_SURFERS.md).
+- **Pose model:** Google's [MediaPipe Pose Landmarker Lite](https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker), which estimates 33 body landmarks per detected person. This project uses the pretrained model; it does not train a custom neural network.
+- **Model file:** `src/motion_control/models/pose_landmarker_lite.task`, included in this repository. [Official model download](https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task) and [Python API guide](https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/python).
+- **Character asset:** RobotExpressive by Tomas Laulhe, credited as CC0 in the original game README and distributed through the [Three.js examples](https://github.com/mrdoob/three.js/tree/dev/examples/models/gltf/RobotExpressive).
 
-Install Node.js/npm and Python 3.13. The pose model is included at `src/motion_control/models/pose_landmarker_lite.task`.
+The controller is Evan's contribution; the original game and model are credited to their respective creators. No new license is asserted for upstream code or third-party assets.
 
-Terminal 1, from the repository root:
+## How it works
+
+```text
+Webcam -> OpenCV frames -> MediaPipe landmarks
+       -> calibrated gesture rules -> Windows keyboard events -> game
+```
+
+Sideways lean is measured relative to shoulder width. Jump and crouch use hip displacement relative to a calibrated standing torso height. Visibility checks reject uncertain torso landmarks, and armed flags prevent repeated commands while a gesture is held.
+
+## Requirements
+
+- Windows (the keyboard helper uses Windows APIs).
+- Python 3.13; developed with Python 3.13.2 and MediaPipe 1.1.0.
+- Node.js and npm.
+- Webcam with shoulders and hips visible and space to move.
+
+## Setup and run
+
+```powershell
+git clone https://github.com/EvanJacobLao/webcam-gesture-runner.git
+cd webcam-gesture-runner
+```
+
+In **terminal 1**, start the game from the repository root:
 
 ```powershell
 npm install
 npm run dev
 ```
 
-Open the localhost URL printed by Vite, normally http://localhost:5173/.
+Open the URL printed by Vite, normally http://localhost:5173/.
 
-Terminal 2, from the repository root:
+In **terminal 2**, starting from the repository root:
 
 ```powershell
 cd src/motion_control
@@ -28,338 +54,46 @@ py -3.13 -m venv .venv
 .\.venv\Scripts\python.exe camera.py
 ```
 
-Create the virtual environment and install dependencies only on first setup. Run `camera.py` from `src/motion_control` because the model path is relative to that directory.
+Create the environment and install packages only on first setup. For later runs, use the final command from `src/motion_control`. The working directory matters because the model path is relative.
 
-## Prototype controls
+## Calibration and controls
 
-- In the camera window, stand upright and press **C** to save the hip and torso baseline. Recalibrate each run and after changing camera distance or position.
-- **E** toggles the current `controls_enabled` flag; **Q** exits when the camera window is focused.
-- Focus the browser game to receive simulated keys: left lean = **A**, right lean = **D**, jump = **W**, crouch = **S**.
-- Return to neutral between repeated gestures. Thresholds are experimental and tuned to the current setup.
+1. Focus the camera window and stand naturally upright.
+2. Press **C** to save the standing hip position and torso height. Recalibrate each run and after changing camera position or playing distance.
+3. Press **E** in the camera window to toggle the current input flag.
+4. Focus the browser game, start a run, and use the gestures below.
+5. Return to neutral before repeating a gesture. Focus the camera window and press **Q** to quit the controller.
 
-**Current limitation:** only right-lean key sending currently checks `controls_enabled`. Left, jump, and crouch still send keys regardless of that flag. Close the controller with **Q** in its window to stop all input. All generated keys go to the focused application; browser focus is required for gameplay. The Windows scan-code helper is used because the original PyAutoGUI events reached the browser with an empty `event.code`.
+| Gesture | Simulated key | Action |
+| --- | --- | --- |
+| Lean left | A | One lane left |
+| Lean right | D | One lane right |
+| Jump | W | Jump |
+| Crouch | S | Slide |
 
-Camera frames are processed locally; the controller does not record video. `Notes.py` contains learning notes, not a runnable Python module.
+A Windows scan-code helper supplies the physical key information expected by the game's `KeyboardEvent.code` mapping. Earlier PyAutoGUI events arrived with an empty `code` during debugging.
 
-## Model and attribution
+## Current limitations
 
-Pose inference uses Google's [MediaPipe Pose Landmarker](https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker). The included Lite model can be obtained from the official [model download](https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task). Original game and asset credits are preserved below; no new license is asserted for the upstream game.
+- **The E switch currently gates only right-lean input.** Left, jump, and crouch still send keys regardless of that flag. Quit the controller with **Q** in its window to stop all input.
+- Generated keys go to the focused application. The controller does not verify browser focus, and camera shortcuts require the camera window to be focused.
+- Thresholds are manually tuned. Toe raises, jump preparation, landing, and tracking noise can cause false detections.
+- Jump and crouch use relative hip height alone; calibration is kept in memory and assumes the player stays near the calibrated position.
+- The keyboard helper currently supports Windows only.
 
----
+Camera processing runs locally. The controller does not record video.
 
-# Road Surfers
+## Project layout
 
-A 3D endless runner for desktop browsers. You are a courier on an elevated
-maglev line through a twilight megacity, and the line does not stop.
-
-Built with Vite, TypeScript and Three.js. The runner is a skinned GLB
-(`RobotExpressive` by Tomás Laulhé, CC0, via the three.js examples) driven by
-an `AnimationMixer`; everything else — every other mesh, texture and sound — is
-generated at runtime.
-
-```bash
-npm install
-npm run dev      # http://localhost:5173
+```text
+src/motion_control/
+  camera.py                       # Webcam, pose, gestures, and input
+  requirements.txt                # Python dependencies
+  models/pose_landmarker_lite.task # Pretrained pose model
+src/input/InputManager.ts         # Original game key mapping
+docs/ROAD_SURFERS.md               # Original game README and credits
 ```
 
-| Script | What it does |
-| --- | --- |
-| `npm run dev` | Dev server with HMR |
-| `npm run build` | Type-check, then production bundle into `dist/` |
-| `npm run preview` | Serve the production build |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm run validate` | Prove every obstacle pattern is solvable at every speed |
-| `npm run soak` | Headless play-through with a solver-driven bot |
-| `npm test` | All three of the above |
+## Learning goals
 
-URL flags: `?quality=low\|medium\|high` pins the render tier, `?validate` runs the
-fairness harness in the browser console.
-
-## Controls
-
-Desktop keyboard and touch both work; the on-screen hints follow whichever you
-last used, so a touchscreen laptop is not forced into either.
-
-**Touch** — swipe left/right to change lane, swipe up or tap to jump, swipe down
-to slide. Swipes fire the instant the threshold is crossed rather than on
-release, and the origin resets after each one so a single drag can chain lane
-changes. A thumb-button pad is available instead via the toggle on the start
-screen. Landscape only: portrait leaves the three lanes too narrow to read, so
-the game asks you to rotate.
-
-**Fullscreen** is a button in the top-right and the `F` key. Touch devices enter
-it automatically when a run starts — browser chrome eats roughly a third of a
-phone's landscape viewport — and the game tries to lock the orientation to
-landscape while it is there. It is opt-in on desktop and the choice is
-remembered. Where fullscreen is unavailable (iPhone Safari has no element
-fullscreen) or refused by the embedder, the control hides itself rather than
-sitting there doing nothing.
-
-| Action | Keys |
-| --- | --- |
-| Move left | `A` · `←` |
-| Move right | `D` · `→` |
-| Jump | `W` · `↑` · `Space` |
-| Slide | `S` · `↓` |
-| Pause | `Esc` · `P` · on-screen button |
-| Fullscreen | `F` · on-screen button |
-| Restart | `R` |
-| Mute | `M` |
-
-Sliding can be cancelled into a jump, and pressing slide in mid-air fast-falls
-and slides the moment you land. Jump and slide inputs are buffered for 140 ms,
-so a press made just before landing still fires.
-
-## Deploying
-
-Hosted on Cloudflare Workers as static assets ([wrangler.jsonc](wrangler.jsonc)).
-Either connect the GitHub repo in the Cloudflare dashboard (Workers & Pages →
-Import a repository; build `npm run build`, deploy `npx wrangler deploy`) so
-every push to `main` goes live, or run `npm run deploy` locally after
-`npx wrangler login`.
-
-## Visual direction
-
-Three colours carry meaning and nothing else is allowed to use them:
-
-- **Cyan** — you, the track, anything safe. Lane seams, rail lights, the
-  runner's chest bar and visor.
-- **Amber** — reward. Sparks (the coins) and nothing else.
-- **Coral** — danger. Every hazard chassis and every warning stripe.
-
-The runner is a skinned low-poly robot re-skinned into the same palette (pale
-shell, dark joints, cyan-lit visor). Its `Running`, `Jump` and `Death` clips are
-cross-faded with an `AnimationMixer`, the run cycle's time scale follows speed,
-and the slide — which the model has no clip for — is layered on procedurally by
-folding the spine bones after the mixer runs. The fold is applied as
-*base + offset*, never additively: two of the three spine bones have no
-animation tracks at all, so anything accumulated on them would never be reset.
-A procedural primitive rig remains as a fallback if the model cannot be fetched.
-
-The runner stands 1.13 m (`PLAYER_SCALE = 0.7`); the collider and the heights of
-overhead and low hazards all derive from the same constants, so what you see is
-always what collides.
-
-Everything is flat-shaded low-poly against a deep indigo void, lit by a single
-shadow-casting key, a cool rim and a sky bounce, with a restrained half-
-resolution bloom on the emissive trim. Hazards carry a **chevron on the face you
-see first** — up means jump, down means slide, opposed arrows mean go around —
-so the required verb is legible from sixty metres out, long before the shape is.
-
-The run alternates between open city and enclosed tunnel sections. Entering a
-tunnel pulls the fog in from 45–235 m to 22–120 m and drops the sky bounce,
-which changes the feel of the space without ever hiding a hazard.
-
-## Architecture
-
-The world scrolls past a runner who never moves in Z. Every entity stores a
-player-relative `z` that is advanced by the same per-frame delta, so there is no
-growing world offset and no floating-point drift on a long run.
-
-```
-src/
-  core/        Game · GameLoop · GameState · Config · Random · ObjectPool · MathUtils
-  render/      SceneSetup (Stage) · CameraController · Materials · Geometries ·
-               PartBuilder · Palette · Sky
-  player/      Player · PlayerMovement · SkinnedRunner · PlayerModel (fallback) · RunnerRig
-  input/       InputManager
-  world/       TrackManager · ProceduralGenerator · Patterns · PathSolver ·
-               ObstacleTypes · ObstacleManager · CollectibleManager ·
-               EnvironmentManager · TrackBuilder
-  systems/     CollisionSystem · DifficultyManager · ScoreSystem ·
-               PowerUpSystem · ParticleSystem
-  audio/       AudioManager
-  ui/          UIManager · styles.css
-  dev/         validateGeneration · soak · Autopilot   (test harnesses only)
-```
-
-`Game` is the only place subsystems meet; the dependency graph is a star, not a
-web. Notable files:
-
-| File | Responsibility |
-| --- | --- |
-| `core/Game.ts` | Phase machine and per-frame orchestration |
-| `core/Config.ts` | Every tuning number in the game, in one place |
-| `world/PathSolver.ts` | Reachability search that decides what is fair |
-| `world/Patterns.ts` | The authored gameplay vocabulary — 35 patterns |
-| `world/ProceduralGenerator.ts` | Picks, validates and places the next stretch |
-| `player/PlayerMovement.ts` | Kinematics and posture state machine (no Three.js) |
-| `systems/CollisionSystem.ts` | Swept AABB tests (no Three.js) |
-| `render/PartBuilder.ts` | Builds props from primitives, merges them per material |
-
-`PlayerMovement` and `CollisionSystem` deliberately have no rendering
-dependency, which is what lets the headless soak test drive the real gameplay
-code with no renderer in the loop.
-
-## Procedural generation
-
-The track is emitted one **chunk** at a time. A chunk is a reaction gap followed
-by an authored **pattern** — a small declarative record of obstacle placements
-and coin trails:
-
-```ts
-{
-  id: 'forced-slide', length: 22, tier: 2, weight: 8,
-  obstacles: [
-    { type: 'beamWide', lane: 1, z: 8 },   // blocks lanes 1–2 overhead
-    { type: 'pylon',    lane: 0, z: 8 },   // blocks lane 0 outright
-  ],
-  coins: [{ lane: 2, z: 3, count: 8, gap: 1.4 }],
-}
-```
-
-The generator picks a pattern by weight (de-weighting whatever it just used),
-mirrors it left/right at random to double the effective library, validates it,
-and places it. Coin trails expand into individual coins, with `arc` trails
-following the actual jump parabola so the reward lines up with the input.
-
-Everything is pooled: hazards, coins, power-ups, deck segments, arch gates,
-tunnel ribs and particles. Coins are a single `InstancedMesh`, so several
-hundred of them cost one draw call. The skyline is two more instanced meshes.
-After the first few hundred metres, the main loop allocates nothing.
-
-## How obstacle fairness is maintained
-
-This is enforced, not hoped for.
-
-**1 · Every pattern is proved solvable before it can spawn.** Each candidate is
-compiled into a lane-occupancy grid (0.25 m slices × 3 lanes, each cell marked
-*clear / jumpable / slideable / blocked*) and run through a breadth-first
-reachability search over the player's real state space — lane × posture ×
-lane-transition — using the same gravity, jump velocity, slide duration and
-lane-change time as the player controller. The jump's clearance window is
-derived from the actual arc, not assumed.
-
-A pattern ships only if a route exists **from every starting lane**, because the
-generator cannot know which lane the player will arrive in.
-
-**2 · With margin.** Validation runs at 1.14× the real speed, so every pattern
-carries spare distance. A pattern that only just works frame-perfectly is not
-fair to a person, and it gets rejected.
-
-**3 · Composition is guaranteed too.** A per-pattern proof is worthless if
-patterns can chain into something impossible. The gap in front of every pattern
-is at least `jump airtime × speed`, so a jump taken at the previous pattern's
-last metre has always landed before the next one begins — which is exactly the
-grounded entry state the solver assumed. The validator asserts this ratio stays
-above 1.0 (it currently measures 1.34×).
-
-**4 · Moving hazards are modelled conservatively.** A patrol drone is entered in
-the grid as blocking both lanes it can reach for its whole length, and a sweeper
-as blocking all three overhead — so the solved route never depends on timing a
-moving object, and reality is always easier than the model.
-
-**5 · Results are memoised** per (pattern, mirrored, speed bucket), so the cost
-is paid once per combination rather than once per spawn.
-
-If no candidate passes, the generator falls back to a hazard-free coin run
-rather than shipping something unfair.
-
-### Verification
-
-`npm run validate` proves all 35 patterns and their mirrors solvable across the
-whole speed range — 1,260 solver runs, zero failures.
-
-`npm run soak` goes further: it runs the real generator, the real movement code
-and the real collision system against a bot that plans with the same solver, and
-on any collision it re-checks whether a surviving route existed a second
-earlier. Only a genuine dead end fails the test — a bot mistake says the fixture
-played badly, not that the track was unfair. Six seeds × 14 km (≈ 8½ minutes of
-play each, ~3,700 obstacles) produce **zero dead ends**.
-
-## Difficulty progression
-
-Difficulty is a function of time and distance, never of randomness.
-
-- **Speed** eases from 12.5 to 29 m/s over 190 s on a `1 − (1 − t)^2.1` curve:
-  quick early gains so the run gets going, flattening near the top so the
-  ceiling is a plateau you can master rather than a wall.
-- **Tier** unlocks by distance — 0 / 320 / 800 / 1500 / 2600 m — and gates the
-  pattern pool: tier 0 teaches one verb at a time, tier 1 chains two, tier 2
-  forces actions and introduces moving hazards, tier 3 overlaps timing windows,
-  tier 4 builds corridors and stacks. Patterns can also *expire* (`maxTier`) so
-  trivial ones stop diluting the late game.
-- **Reaction gap** shrinks from 0.95 s to 0.52 s of travel between patterns.
-- **Coin density and power-up frequency** rise with tier.
-
-Nothing about the ramp is random, so two runs of the same length feel equally
-hard — and the fairness solver re-validates every pattern at the new speed as it
-climbs, so difficulty never crosses into impossibility.
-
-## Power-ups
-
-| | Effect |
-| --- | --- |
-| **Magnet** | 8 s — draws coins in from 7 m |
-| **Shield** | 14 s — absorbs one hit and turns it into a stumble |
-| **Surge** | 6.5 s — +5.5 m/s and double score |
-
-They spawn in the reaction gap, which is guaranteed clear.
-
-## Audio
-
-Everything is synthesised with the Web Audio API at runtime — a four-chord loop
-in A minor with a plucked arpeggio and a soft pulse, whose filter cutoff and
-tempo follow the player's speed, plus one-shot effects for jump, landing, slide,
-lane change, pickup, near-miss, shield break, crash and UI. Collected coins walk
-up a pentatonic ladder that resets after a pause, so a coin run resolves
-musically.
-
-The context is created on the first user gesture (browser autoplay policy) and
-every method degrades to a no-op if Web Audio is unavailable, so the game is
-fully playable without sound.
-
-## Performance
-
-Measured at tier 4 / 29 m/s with the world fully populated: **~137 draw calls,
-~10k triangles, 73 geometries, 5 textures, 34 shader programs.**
-
-Decisions behind that:
-
-- **Props are merged per material.** A hazard is authored as a dozen primitives
-  for silhouette detail, then collapsed into two or three meshes — and each
-  merged buffer is built once per type and *shared* by every pooled instance.
-- **Emissive trim never casts shadows.** It sits inside the prop's own
-  silhouette, so shadowing it would double the shadow pass for no visible
-  difference. One shadow-casting light, with a 2048 map on a small ortho frustum
-  that follows the player.
-- **Instancing where the count is high** — coins, near buildings, their window
-  bands and the far skyline.
-- **No dynamic lights.** Power-up halos are additive sprites; adding and
-  removing real point lights forces material recompiles, and a stutter is worse
-  than a physically-correct falloff.
-- **Bloom runs at half resolution** with a high threshold, so only the neon
-  trim blooms and never the deck.
-- **The HUD is written only when a value changes.** String formatting and layout
-  every frame at 144 Hz shows up as jank long before the renderer does.
-- **Adaptive quality**: if the frame rate sits below 46 fps for 2.5 s the
-  renderer drops a tier — bloom strength and shadow resolution first, then post
-  and shadows entirely. One-way, so it never oscillates mid-run.
-- **Delta time is clamped** to 50 ms, and collision is swept in Z, so a
-  backgrounded tab cannot teleport the player through a wall on return.
-- **Touch devices start a tier down** and cap the device pixel ratio at 1.5.
-  A phone reporting a ratio of 3 would otherwise shade nine times the fragments
-  of a 1× buffer for a screen too small to show the difference.
-- **WebGL context loss is handled.** Losing the context is routine on mobile;
-  unhandled it is a permanently frozen black canvas. The game pauses on loss and
-  resumes when the browser hands the context back.
-- **Sizing listens to both a ResizeObserver and the window events.** The
-  observer reports the container's box after layout, which is what is actually
-  drawn into; the window events keep working when rendering is suspended and
-  observer callbacks are not delivered. Both funnel into one handler that no-ops
-  when nothing changed.
-- **Vertical FOV widens on narrow viewports** to hold the horizontal view
-  constant, so the outer lanes never fall off the sides of a short window.
-
-## Known limitations
-
-- Portrait on phones is gated behind a rotate prompt rather than supported; the
-  camera framing and lane spacing are built for landscape.
-- The soak bot occasionally misplays a two-lane wall at top speed (≈ 0.4% of
-  hazards). A route always exists, so this is a limit of the test fixture's
-  30 Hz replanning, not of the generated track.
-- Frame timings above are CPU-side; GPU cost is not directly measurable from
-  script, though the geometry and fill budgets are small enough that it is
-  unlikely to dominate on any modern laptop.
-- The bloom pass has no dirt/lens texture and no temporal stability pass, so
-  very fast lateral motion can shimmer slightly on high-contrast trim.
+Webcam capture, pose landmarks, normalized coordinates, body-relative geometry, calibration, visibility checks, gesture debouncing, and connecting a Python controller to an existing game.
