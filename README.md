@@ -1,3 +1,52 @@
+# Webcam Gesture Runner
+
+A Windows webcam controller for a 3D endless runner. Lean left or right, jump, and crouch to send keyboard actions to Road Surfers.
+
+This is Evan Jacob Lao's learning project using Python, OpenCV, and MediaPipe Pose Landmarker. MediaPipe supplies pretrained body landmarks; rule-based geometry, standing calibration, and armed flags translate them into one-shot actions. No custom model training is required.
+
+The underlying game is [Road Surfers by durga811](https://github.com/durga811/road-surfers). Its original history and documentation are retained below. The Python motion controller is in `src/motion_control/camera.py`.
+
+## Run locally (Windows / PowerShell)
+
+Install Node.js/npm and Python 3.13. The pose model is included at `src/motion_control/models/pose_landmarker_lite.task`.
+
+Terminal 1, from the repository root:
+
+```powershell
+npm install
+npm run dev
+```
+
+Open the localhost URL printed by Vite, normally http://localhost:5173/.
+
+Terminal 2, from the repository root:
+
+```powershell
+cd src/motion_control
+py -3.13 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe camera.py
+```
+
+Create the virtual environment and install dependencies only on first setup. Run `camera.py` from `src/motion_control` because the model path is relative to that directory.
+
+## Prototype controls
+
+- In the camera window, stand upright and press **C** to save the hip and torso baseline. Recalibrate each run and after changing camera distance or position.
+- **E** toggles the current `controls_enabled` flag; **Q** exits when the camera window is focused.
+- Focus the browser game to receive simulated keys: left lean = **A**, right lean = **D**, jump = **W**, crouch = **S**.
+- Return to neutral between repeated gestures. Thresholds are experimental and tuned to the current setup.
+
+**Current limitation:** only right-lean key sending currently checks `controls_enabled`. Left, jump, and crouch still send keys regardless of that flag. Close the controller with **Q** in its window to stop all input. All generated keys go to the focused application; browser focus is required for gameplay. The Windows scan-code helper is used because the original PyAutoGUI events reached the browser with an empty `event.code`.
+
+Camera frames are processed locally; the controller does not record video. `Notes.py` contains learning notes, not a runnable Python module.
+
+## Model and attribution
+
+Pose inference uses Google's [MediaPipe Pose Landmarker](https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker). The included Lite model can be obtained from the official [model download](https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task). Original game and asset credits are preserved below; no new license is asserted for the upstream game.
+
+---
+
 # Road Surfers
 
 A 3D endless runner for desktop browsers. You are a courier on an elevated

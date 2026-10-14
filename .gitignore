@@ -3,3 +3,11 @@ dist
 .DS_Store
 *.local
 .wrangler
+
+# Python environments and local files
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.env
+.env.*
