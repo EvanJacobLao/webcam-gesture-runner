@@ -106,16 +106,15 @@ while camera.isOpened():
                     # print("Standing Straight")
 
                 if lean_armed:
-                    if lean_ratio < -0.20:
-                        print("Leaning Right")
-                        if controls_enabled:
-                            print("Sending RIGHT")
+                    if controls_enabled:
+                        if lean_ratio < -0.20:
+                            print("Leaning Right")
                             press_key('d')
-                        lean_armed = False
-                    elif lean_ratio > 0.20:
-                        print("Leaning Left")
-                        press_key('a')
-                        lean_armed = False
+                            lean_armed = False
+                        elif lean_ratio > 0.20:
+                            print("Leaning Left")
+                            press_key('a')
+                            lean_armed = False
 
             # Handle Jumping
 
@@ -135,17 +134,19 @@ while camera.isOpened():
                     crouch_armed = True
 
                 if jump_armed:
-                    if jump_ratio >= 0.30:
-                        print("Jump!")
-                        press_key('w')
-                        jump_armed = False
+                    if controls_enabled:
+                        if jump_ratio >= 0.30:
+                            print("Jump!")
+                            press_key('w')
+                            jump_armed = False
 
                 # Handle Crouching
                 if crouch_armed:
-                    if jump_ratio < -0.15:
-                        print("Crouch!")
-                        press_key('s')
-                        crouch_armed = False
+                    if controls_enabled:
+                        if jump_ratio < -0.15:
+                            print("Crouch!")
+                            press_key('s')
+                            crouch_armed = False
 
 
 

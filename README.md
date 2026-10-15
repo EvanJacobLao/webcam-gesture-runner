@@ -60,7 +60,7 @@ Create the environment and install packages only on first setup. For later runs,
 
 1. Focus the camera window and stand naturally upright.
 2. Press **C** to save the standing hip position and torso height. Recalibrate each run and after changing camera position or playing distance.
-3. Press **E** in the camera window to toggle the current input flag.
+3. Press **E** in the camera window to enable or disable keyboard output for all four gestures.
 4. Focus the browser game, start a run, and use the gestures below.
 5. Return to neutral before repeating a gesture. Focus the camera window and press **Q** to quit the controller.
 
@@ -75,7 +75,7 @@ A Windows scan-code helper supplies the physical key information expected by the
 
 ## Current limitations
 
-- **The E switch currently gates only right-lean input.** Left, jump, and crouch still send keys regardless of that flag. Quit the controller with **Q** in its window to stop all input.
+- Enabling controls while already holding a gesture can trigger an action immediately if its flag is armed. Stand upright before enabling. Press **E** in the camera window to disable all gesture key output, or **Q** to quit.
 - Generated keys go to the focused application. The controller does not verify browser focus, and camera shortcuts require the camera window to be focused.
 - Thresholds are manually tuned. Toe raises, jump preparation, landing, and tracking noise can cause false detections.
 - Jump and crouch use relative hip height alone; calibration is kept in memory and assumes the player stays near the calibrated position.
